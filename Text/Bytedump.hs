@@ -33,6 +33,12 @@ module Text.Bytedump
 	, dumpS
 	, dumpBS
 	, dumpLBS
+
+	-- * Dump 2 set of bytes into formatted side-by-side strings using default config
+	, dumpDiff
+	, dumpDiffS
+	, dumpDiffBS
+	, dumpDiffLBS
 	) where
 
 import Data.List
@@ -130,6 +136,28 @@ disptable cfg x  =
 			| w >= 0x20 && w < 0x7f = toEnum $ fromIntegral w
 			| otherwise             = '.'
 
+dispDiffTable :: BytedumpConfig -> [Word8] -> [Word8] -> [String]
+dispDiffTable _   [] [] = []
+dispDiffTable cfg x1 x2 =
+	let (pre1, post1) = splitAt (configRowSize cfg) x1 in
+	let (pre2, post2) = splitAt (configRowSize cfg) x2 in
+	tableRow pre1 pre2 : dispDiffTable cfg post1 post2
+
+	where
+		tableRow row1 row2 =
+			let l1 = splitMultiple (configRowGroupSize cfg) $ map hexString row1 in
+			let l2 = splitMultiple (configRowGroupSize cfg) $ map hexString row2 in
+			let lb1 = intercalate (configRowGroupSep cfg) $ map (intercalate (configCellSep cfg)) l1 in
+			let lb2 = intercalate (configRowGroupSep cfg) $ map (intercalate (configCellSep cfg)) l2 in
+			let rowLen = 2 * configRowSize cfg
+			           + (configRowSize cfg - 1) * length (configCellSep cfg)
+			           + ((configRowSize cfg `div` configRowGroupSize cfg) - 1) * length (configRowGroupSep cfg) in
+			configRowLeft cfg ++ lb1 ++ replicate (rowLen - length lb1) ' ' ++ configRowRight cfg
+			                  ++ lb2 ++ replicate (rowLen - length lb2) ' ' ++ configRowRight cfg
+
+		splitMultiple _ [] = []
+		splitMultiple n l  = let (pre, post) = splitAt n l in pre : splitMultiple n post
+
 -- | Dump a list of bytes into formatted strings using a specific config
 dumpWith :: BytedumpConfig -> [Word8] -> String
 dumpWith cfg l = intercalate "\n" rows
@@ -163,3 +191,20 @@ dumpBS = dump . B.unpack
 -- | Dump a lazy bytestring into a formatted string of hex value
 dumpLBS :: L.ByteString -> String
 dumpLBS = dump . L.unpack
+
+-- | Dump two list of word8 into a formatted string of hex value side by side
+dumpDiff :: [Word8] -> [Word8] -> String
+dumpDiff l1 l2 = intercalate "\n" rows
+    where rows = dispDiffTable defaultConfig l1 l2
+
+-- | Dump a string into a formatted string of hex value
+dumpDiffS :: String -> String -> String
+dumpDiffS s1 s2 = dumpDiff (map (toEnum.fromEnum) s1) (map (toEnum.fromEnum) s2)
+
+-- | Dump a bytestring into a formatted string of hex value
+dumpDiffBS :: B.ByteString -> B.ByteString -> String
+dumpDiffBS b1 b2 = dumpDiff (B.unpack b1) (B.unpack b2)
+
+-- | Dump a lazy bytestring into a formatted string of hex value
+dumpDiffLBS :: L.ByteString -> L.ByteString -> String
+dumpDiffLBS l1 l2 = dumpDiff (L.unpack l1) (L.unpack l2)
