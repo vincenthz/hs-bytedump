@@ -10,36 +10,36 @@
 --
 
 module Text.Bytedump
-	( hexString
+    ( hexString
 
-	-- * Formatted string configuration
-	, BytedumpConfig(..)
-	, defaultConfig
+    -- * Formatted string configuration
+    , BytedumpConfig(..)
+    , defaultConfig
 
-	-- * Dump bytes into not formatted strings
-	, dumpRaw
-	, dumpRawS
-	, dumpRawBS
-	, dumpRawLBS
+    -- * Dump bytes into not formatted strings
+    , dumpRaw
+    , dumpRawS
+    , dumpRawBS
+    , dumpRawLBS
 
-	-- * Dump bytes into formatted strings using a specific config
-	, dumpWith
-	, dumpWithS
-	, dumpWithBS
-	, dumpWithLBS
+    -- * Dump bytes into formatted strings using a specific config
+    , dumpWith
+    , dumpWithS
+    , dumpWithBS
+    , dumpWithLBS
 
-	-- * Dump bytes into formatted strings using default config
-	, dump
-	, dumpS
-	, dumpBS
-	, dumpLBS
+    -- * Dump bytes into formatted strings using default config
+    , dump
+    , dumpS
+    , dumpBS
+    , dumpLBS
 
-	-- * Dump 2 set of bytes into formatted side-by-side strings using default config
-	, dumpDiff
-	, dumpDiffS
-	, dumpDiffBS
-	, dumpDiffLBS
-	) where
+    -- * Dump 2 set of bytes into formatted side-by-side strings using default config
+    , dumpDiff
+    , dumpDiffS
+    , dumpDiffBS
+    , dumpDiffLBS
+    ) where
 
 import Data.List
 import Data.Word
@@ -48,27 +48,27 @@ import qualified Data.ByteString as B
 
 -- | Configuration structure used for formatting functions
 data BytedumpConfig = BytedumpConfig
-	{ configRowSize      :: Int    -- ^ number of bytes per row.
-	, configRowGroupSize :: Int    -- ^ number of bytes per group per row.
-	, configRowGroupSep  :: String -- ^ string separating groups.
-	, configRowLeft      :: String -- ^ string on the left of the row.
-	, configRowRight     :: String -- ^ string on the right of the row.
-	, configCellSep      :: String -- ^ string separating cells in row.
-	, configPrintChar    :: Bool   -- ^ if the printable ascii table is displayed.
-	} deriving (Show,Eq)
+    { configRowSize      :: Int    -- ^ number of bytes per row.
+    , configRowGroupSize :: Int    -- ^ number of bytes per group per row.
+    , configRowGroupSep  :: String -- ^ string separating groups.
+    , configRowLeft      :: String -- ^ string on the left of the row.
+    , configRowRight     :: String -- ^ string on the right of the row.
+    , configCellSep      :: String -- ^ string separating cells in row.
+    , configPrintChar    :: Bool   -- ^ if the printable ascii table is displayed.
+    } deriving (Show,Eq)
 
 -- | Default Config using 16 bytes by row with a separation at the 8th byte, and
 -- dumping printable ascii character on the right.
 defaultConfig :: BytedumpConfig
 defaultConfig = BytedumpConfig
-	{ configRowSize      = 16
-	, configRowGroupSize = 8
-	, configRowGroupSep  = " : "
-	, configRowLeft      = " | "
-	, configRowRight     = " | "
-	, configCellSep      = " "
-	, configPrintChar    = True
-	}
+    { configRowSize      = 16
+    , configRowGroupSize = 8
+    , configRowGroupSep  = " : "
+    , configRowLeft      = " | "
+    , configRowRight     = " | "
+    , configCellSep      = " "
+    , configPrintChar    = True
+    }
 
 hex :: Int -> Char
 hex 0  = '0'
@@ -116,52 +116,52 @@ dumpRawLBS = dumpRaw . L.unpack
 disptable :: BytedumpConfig -> [Word8] -> [String]
 disptable _   [] = []
 disptable cfg x  =
-	let (pre, post) = splitAt (configRowSize cfg) x in
-	tableRow pre : disptable cfg post
-	where
-		tableRow row =
-			let l  = splitMultiple (configRowGroupSize cfg) $ map hexString row in
-			let lb = intercalate (configRowGroupSep cfg) $ map (intercalate (configCellSep cfg)) l in
-			let rb = map printChar row in
-			let rowLen = 2 * configRowSize cfg
-			           + (configRowSize cfg - 1) * length (configCellSep cfg)
-			           + ((configRowSize cfg `div` configRowGroupSize cfg) - 1) * length (configRowGroupSep cfg) in
-			configRowLeft cfg ++ lb ++ replicate (rowLen - length lb) ' ' ++ configRowRight cfg ++ (if configPrintChar cfg then rb else "")
+    let (pre, post) = splitAt (configRowSize cfg) x in
+    tableRow pre : disptable cfg post
+    where
+        tableRow row =
+            let l  = splitMultiple (configRowGroupSize cfg) $ map hexString row in
+            let lb = intercalate (configRowGroupSep cfg) $ map (intercalate (configCellSep cfg)) l in
+            let rb = map printChar row in
+            let rowLen = 2 * configRowSize cfg
+                       + (configRowSize cfg - 1) * length (configCellSep cfg)
+                       + ((configRowSize cfg `div` configRowGroupSize cfg) - 1) * length (configRowGroupSep cfg) in
+            configRowLeft cfg ++ lb ++ replicate (rowLen - length lb) ' ' ++ configRowRight cfg ++ (if configPrintChar cfg then rb else "")
 
-		splitMultiple _ [] = []
-		splitMultiple n l  = let (pre, post) = splitAt n l in pre : splitMultiple n post
+        splitMultiple _ [] = []
+        splitMultiple n l  = let (pre, post) = splitAt n l in pre : splitMultiple n post
 
-		printChar :: Word8 -> Char
-		printChar w
-			| w >= 0x20 && w < 0x7f = toEnum $ fromIntegral w
-			| otherwise             = '.'
+        printChar :: Word8 -> Char
+        printChar w
+            | w >= 0x20 && w < 0x7f = toEnum $ fromIntegral w
+            | otherwise             = '.'
 
 dispDiffTable :: BytedumpConfig -> [Word8] -> [Word8] -> [String]
 dispDiffTable _   [] [] = []
 dispDiffTable cfg x1 x2 =
-	let (pre1, post1) = splitAt (configRowSize cfg) x1 in
-	let (pre2, post2) = splitAt (configRowSize cfg) x2 in
-	tableRow pre1 pre2 : dispDiffTable cfg post1 post2
+    let (pre1, post1) = splitAt (configRowSize cfg) x1 in
+    let (pre2, post2) = splitAt (configRowSize cfg) x2 in
+    tableRow pre1 pre2 : dispDiffTable cfg post1 post2
 
-	where
-		tableRow row1 row2 =
-			let l1 = splitMultiple (configRowGroupSize cfg) $ map hexString row1 in
-			let l2 = splitMultiple (configRowGroupSize cfg) $ map hexString row2 in
-			let lb1 = intercalate (configRowGroupSep cfg) $ map (intercalate (configCellSep cfg)) l1 in
-			let lb2 = intercalate (configRowGroupSep cfg) $ map (intercalate (configCellSep cfg)) l2 in
-			let rowLen = 2 * configRowSize cfg
-			           + (configRowSize cfg - 1) * length (configCellSep cfg)
-			           + ((configRowSize cfg `div` configRowGroupSize cfg) - 1) * length (configRowGroupSep cfg) in
-			configRowLeft cfg ++ lb1 ++ replicate (rowLen - length lb1) ' ' ++ configRowRight cfg
-			                  ++ lb2 ++ replicate (rowLen - length lb2) ' ' ++ configRowRight cfg
+    where
+        tableRow row1 row2 =
+            let l1 = splitMultiple (configRowGroupSize cfg) $ map hexString row1 in
+            let l2 = splitMultiple (configRowGroupSize cfg) $ map hexString row2 in
+            let lb1 = intercalate (configRowGroupSep cfg) $ map (intercalate (configCellSep cfg)) l1 in
+            let lb2 = intercalate (configRowGroupSep cfg) $ map (intercalate (configCellSep cfg)) l2 in
+            let rowLen = 2 * configRowSize cfg
+                       + (configRowSize cfg - 1) * length (configCellSep cfg)
+                       + ((configRowSize cfg `div` configRowGroupSize cfg) - 1) * length (configRowGroupSep cfg) in
+            configRowLeft cfg ++ lb1 ++ replicate (rowLen - length lb1) ' ' ++ configRowRight cfg
+                              ++ lb2 ++ replicate (rowLen - length lb2) ' ' ++ configRowRight cfg
 
-		splitMultiple _ [] = []
-		splitMultiple n l  = let (pre, post) = splitAt n l in pre : splitMultiple n post
+        splitMultiple _ [] = []
+        splitMultiple n l  = let (pre, post) = splitAt n l in pre : splitMultiple n post
 
 -- | Dump a list of bytes into formatted strings using a specific config
 dumpWith :: BytedumpConfig -> [Word8] -> String
 dumpWith cfg l = intercalate "\n" rows
-	where rows = disptable cfg l
+    where rows = disptable cfg l
 
 -- | Dump a string into formatted strings using a specific config
 dumpWithS :: BytedumpConfig -> String -> String
@@ -178,7 +178,7 @@ dumpWithLBS cfg = dumpWith cfg . L.unpack
 -- | Dump a list of word8 into a formatted string of hex value
 dump :: [Word8] -> String
 dump l = intercalate "\n" rows
-	where rows = disptable defaultConfig l
+    where rows = disptable defaultConfig l
 
 -- | Dump a string into a formatted string of hex value
 dumpS :: String -> String
