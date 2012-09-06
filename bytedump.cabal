@@ -1,5 +1,5 @@
 Name:                bytedump
-Version:             0.9
+Version:             1.0
 Description:
     A set of helpers to dump bytes with lots of different output formats
     easy to read for humans eyes.
